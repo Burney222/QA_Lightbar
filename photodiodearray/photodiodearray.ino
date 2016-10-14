@@ -9,7 +9,7 @@ int CLKpin = 4;    // <-- Arduino pin delivering the clock pulses to pin 3 (CLK)
 int SIpin = 6;     // <-- Arduino pin delivering the SI (serial-input) pulse to pin 2 of the TSL1402R / pin 2 of TSL2014
 int AOpin1 = 1;    // <-- Arduino pin connected to pin 4 (analog output 1)of the TSL1402R / pin 3 of TSL2014
 int AOpin2 = 2;    // <-- Arduino pin connected to pin 8 (analog output 2)of the TSL1402R / pin 8 of TSL2014 (separate pins for parallel; currently read in seriel)
-uint8_t IntArray[897]; // <-- the array where the readout of the photodiodes is stored, as integers (not enough memory for longer values)
+uint8_t IntArray[896]; // <-- the array where the readout of the photodiodes is stored, as integers (not enough memory for longer values)
 int val;
 
 void setup() 
@@ -63,10 +63,10 @@ void loop()
       digitalWrite(SIpin, HIGH);
       ClockPulse();
       digitalWrite(SIpin, LOW);
-      IntArray[0]=0;  
+      //IntArray[0]=255;
       // Next, read all 896 pixels in parallell. Store the result in the array. Each clock pulse 
       // causes a new pixel to expose its value on the two outputs:
-      for(int i=1; i < 897; i++)
+      for(int i=0; i < 896; i++)
       {
           delayMicroseconds(20);// <-- We add a delay to stabilize the AO output from the sensor
           IntArray[i] = analogRead(AOpin1) / 4; //convert 1024 range to 256 range
@@ -84,11 +84,12 @@ void loop()
       // communication. This takes ~80 ms during whick time no clock pulses reaches the sensor. 
       // No integration is taking place during this time from the photodiodes as the integration 
       // begins first after the 18th clock pulse after a SI pulse is inserted:
-      for(int i = 0; i < 896; i++)
+      Serial.print("!"); //Every measurement output starts with an exclamation mark
+      for(int i = 0; i < 895; i++)
       {
           Serial.print(IntArray[i]); Serial.print(",");
       }
-           Serial.print(IntArray[896]);  
+      Serial.print(IntArray[895]);  
       Serial.println(""); // <-- Send a linebreak to indicate the measurement is transmitted.
 
       // Next, a new measuring cycle is starting once 18 clock pulses have passed. At  

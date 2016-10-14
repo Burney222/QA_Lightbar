@@ -9,7 +9,9 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import serial
 import sys
-import msvcrt
+#Import special library on windows
+if sys.platform == "win32":
+    import msvcrt
 import time
 from collections import deque
 
@@ -91,13 +93,13 @@ def init():
 
 # animation function.  This is called sequentially
 def animate(i):
-    x = list(range(897))
+    x = list(range(896))
     for j in range(5):
         reading = ser.readline()
-        if reading[0]=='0':
+        if reading[0] == "!":
+            reading = reading[1:]   # Remove the exclamation mark that indicates the new line
             break
     y = reading.split(",")
-    #y[895]='0'
     y = list(map(int,y))
     y2= [j / 51.0 for j in y]
     avgtext = str(np.mean(y2))
