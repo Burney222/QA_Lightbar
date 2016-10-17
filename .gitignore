@@ -1,0 +1,9 @@
+*.pdf
+*.png
+*.eps
+*.so
+*.root
+.DS_Store
+._.DS_Store
+*.pkl
+*.pyc

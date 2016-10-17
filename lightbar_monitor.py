@@ -42,23 +42,26 @@ permline, = plt.plot([], [], linewidth=2, color="r")    #Line that is triggered 
 line, = plt.plot([], [], linewidth=2, color="b")
 plt.ylabel("Intensity (Volts)", fontsize=20)
 plt.xlabel("Channel", fontsize=20)
-plt.title("Lightyield Measurement with Arduino/TAOS TSL2014\n"
-            "Click on the plot to show an additional permanent line!", fontsize=22)
-plt.xlim(0, 900)
-plt.xticks(range(0, 900, 100), fontsize=16)
+plt.title("Lightyield Measurement with Arduino/TAOS TSL2014", fontsize=22)
+plt.xlim(0, 895)
+plt.xticks(range(0, 895, 100), fontsize=16)
 plt.ylim(0, 3.5)
 plt.yticks(range(0, 4, 1), fontsize=16)
 plt.grid()  #Plot grid
 
 # Boxes that store information about the mean and std across the different channels
-box1 = plt.text(0.7, 0.05, "null", size=20, transform=plt.gca().transAxes,
-        bbox=dict(boxstyle="round", ec='k', fc='w'))
+box1 = plt.text(0.75, 0.05, "no data", size=20, transform=plt.gca().transAxes,
+        bbox=dict(boxstyle="round", ec='b', fc='w', lw="2"))
+box2 = plt.text(0.75, 0.15, "no data", size=20, transform=plt.gca().transAxes,
+        bbox=dict(boxstyle="round",ec='b',fc='w', lw="2"))
 
-box2 = plt.text(0.7, 0.15, "null", size=20, transform=plt.gca().transAxes,
-        bbox=dict(boxstyle="round",ec='k',fc='w'))
+box_perm1 = plt.text(0.45, 0.05, "null", size=20, transform=plt.gca().transAxes,
+        bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
+box_perm2 = plt.text(0.45, 0.05, "Click to freeze\ncurrent measurement!", size=20,
+        transform=plt.gca().transAxes, bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
 
 # Function that is called sequentially and updates the plot
-def update_line(iteration, line, permline, box1, box2):
+def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2):
 
     x = list(range(896))
     #Try 5 times to get a correct serial line (i.e. data from all 896 channels)
@@ -70,9 +73,13 @@ def update_line(iteration, line, permline, box1, box2):
             break
 
     try:
-        y = list(map(int, reading.split(",")))  #Transform string into list of integers for each channel
+        #Transform string into list of integers for each channel
+        y = list(map(int, reading.split(",")))
     except:
         print "Error! Could not convert serial input string into list."
+        if reading == "":
+            reading = "<empty>"
+        print "Serial input: {}".format(reading)
         print "Try reconnecting the Arduino."
         sys.exit(1)
 
@@ -93,20 +100,34 @@ def update_line(iteration, line, permline, box1, box2):
     else:
         box2.set_color("r")
 
-    #Update permline if there was a click
+    #Update permline and corresponding boxes if there was a click
     global clicked
     if clicked:
         permline.set_data(x, y)     #Set the permanent line to the current data
+        box_perm1.set_text("mean = {:.5}".format(avg))
+        box_perm2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
+        box_perm2.set_y(0.15)
+        if avg >= 1. and avg <= 3.:
+            box_perm1.set_color("g")
+        else:
+            box_perm1.set_color("r")
+        if rel_std <= 0.25:
+            box_perm2.set_color("g")
+        else:
+            box_perm2.set_color("r")
+
         clicked = False #Change click to false again
 
-    return line, permline, box1, box2
+    return line, permline, box1, box2, box_perm1, box_perm2
 
 # Define behaviour when clicking
 def onClick(event):
     global clicked
     clicked = True
 
+
+
 fig.canvas.mpl_connect('button_press_event', onClick)
-anim = animation.FuncAnimation(fig, update_line, fargs=[line, permline, box1, box2], interval=200, blit=False,
-                                repeat=True, frames=None)
+anim = animation.FuncAnimation(fig, update_line, fargs=[line, permline, box1, box2, box_perm1,
+                    box_perm2], interval=200, blit=False, repeat=True, frames=None)
 plt.show()
