@@ -45,8 +45,8 @@ plt.xlabel("Channel", fontsize=20)
 plt.title("Lightyield Measurement with Arduino/TAOS TSL2014", fontsize=22)
 plt.xlim(0, 895)
 plt.xticks(range(0, 895, 100), fontsize=16)
-plt.ylim(0, 3.5)
-plt.yticks(range(0, 4, 1), fontsize=16)
+plt.ylim(0, 5)
+plt.yticks(range(0, 5, 1), fontsize=16)
 plt.grid()  #Plot grid
 
 # Boxes that store information about the mean and std across the different channels
@@ -88,7 +88,7 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2):
 
     #Update box texts
     avg = np.mean(y)
-    rel_std = np.std(y) / np.mean(y)
+    rel_std = np.std(y) / avg if avg != 0 else "null"
     box1.set_text("mean = {:.5}".format(avg))
     box2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
     if avg >= 1. and avg <= 3.:

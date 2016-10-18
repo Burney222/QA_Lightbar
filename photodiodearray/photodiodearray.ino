@@ -70,15 +70,15 @@ void loop()
       {
           delayMicroseconds(20);// <-- We add a delay to stabilize the AO output from the sensor
           IntArray[i] = analogRead(AOpin1) / 4; //convert 1024 range to 256 range
-         // IntArray[i+128] = analogRead(AOpin2); // for reading both arrays in parallel
+          //IntArray[i+448] = analogRead(AOpin2) / 4; // for reading both arrays in parallel
           ClockPulse(); 
       }
 
       // Next, stop the ongoing integration of light quanta from each photodiode by clocking in a
       // SI pulse:
-      digitalWrite(SIpin, HIGH);
-      ClockPulse(); 
-      digitalWrite(SIpin, LOW);
+      //digitalWrite(SIpin, HIGH);
+      //ClockPulse(); 
+      //digitalWrite(SIpin, LOW);
 
       // Next, send the measurement stored in the array to host computer using serial (rs-232).
       // communication. This takes ~80 ms during whick time no clock pulses reaches the sensor. 
@@ -109,8 +109,8 @@ void loop()
       // The integration time of the current program / measurement cycle is ~3ms. If a larger time
       // of integration is wanted, uncomment the next line:
      // delay(100);// <-- Add 100 ms integration time
-       val = int(analogRead(3)/5);
-       delay(val); //integration time from potentiometer
+     val = int(analogRead(3)/5);
+     delay(val); //integration time from potentiometer
 }
 
 // This function generates an outgoing clock pulse from the Arduino digital pin 'CLKpin'. This clock
