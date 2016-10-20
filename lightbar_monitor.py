@@ -1,7 +1,9 @@
 #!c:/Python27/python.exe -u
-
+import Tkinter
 import sys
 import serial
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import atexit
@@ -40,6 +42,7 @@ except:
 fig = plt.figure(figsize=(16,8), facecolor = "white")
 permline, = plt.plot([], [], linewidth=2, color="r")    #Line that is triggered on click (for ref.)
 line, = plt.plot([], [], linewidth=2, color="b")
+plt.plot([0,895], [3.63, 3.63], "k--")
 plt.ylabel("Intensity (Volts)", fontsize=20)
 plt.xlabel("Channel", fontsize=20)
 plt.title("Lightyield Measurement with Arduino/TAOS TSL2014", fontsize=22)
@@ -50,14 +53,14 @@ plt.yticks(range(0, 5, 1), fontsize=16)
 plt.grid()  #Plot grid
 
 # Boxes that store information about the mean and std across the different channels
-box1 = plt.text(0.75, 0.05, "no data", size=20, transform=plt.gca().transAxes,
+box1 = plt.text(0.75, 0.9, "no data", size=20, transform=plt.gca().transAxes,
         bbox=dict(boxstyle="round", ec='b', fc='w', lw="2"))
-box2 = plt.text(0.75, 0.15, "no data", size=20, transform=plt.gca().transAxes,
+box2 = plt.text(0.75, 0.8, "no data", size=20, transform=plt.gca().transAxes,
         bbox=dict(boxstyle="round",ec='b',fc='w', lw="2"))
 
-box_perm1 = plt.text(0.45, 0.05, "null", size=20, transform=plt.gca().transAxes,
+box_perm1 = plt.text(0.45, 0.9, "null", size=20, transform=plt.gca().transAxes,
         bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
-box_perm2 = plt.text(0.45, 0.05, "Click to freeze\ncurrent measurement!", size=20,
+box_perm2 = plt.text(0.45, 0.9, "Click to freeze\ncurrent measurement!", size=20,
         transform=plt.gca().transAxes, bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
 
 # Function that is called sequentially and updates the plot
@@ -106,7 +109,7 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2):
         permline.set_data(x, y)     #Set the permanent line to the current data
         box_perm1.set_text("mean = {:.5}".format(avg))
         box_perm2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
-        box_perm2.set_y(0.15)
+        box_perm2.set_y(0.8)
         if avg >= 1. and avg <= 3.:
             box_perm1.set_color("g")
         else:
