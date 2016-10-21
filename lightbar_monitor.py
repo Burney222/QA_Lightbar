@@ -6,8 +6,31 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib.backend_bases import FigureCanvasBase
 import atexit
 import numpy as np
+from os.path import splitext
+
+#Modify the print_figure method in FigureCanvasBase to also save the raw data in .csv-file
+#when using the save button in the graphical user interface
+print_figure = FigureCanvasBase.print_figure
+def print_figure_new(self, filename, *args, **kwargs):
+    #Additionally save the raw data as .csv
+    csvfilename = splitext(filename)[0] + ".csv"
+    x, y1 = line.get_data() #blue line
+    xcheck, y2 = permline.get_data() #red line
+    if not xcheck:  #xcheck is empty
+        y2 = np.zeros(len(y1))
+    elif x != xcheck:
+        print "Something went wrong when saving the raw data in {}".format(csvfilename)
+        sys.exit(1)
+    np.savetxt(csvfilename, np.asarray([x,y1,y2]).transpose(), fmt=["%i", "%.8f", "%.8f"],
+               header="Channel, Intensity (blue line) [V], Intensity (red line, if applicable) [V]")
+    print "Saving raw data and plot to {} and {}".format(csvfilename, filename)
+    #run the normal method
+    return print_figure(self, filename, *args, **kwargs)
+
+FigureCanvasBase.print_figure = print_figure_new
 
 # Global variable that stores information about if there was a click
 clicked = False
