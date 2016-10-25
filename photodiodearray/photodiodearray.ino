@@ -8,9 +8,11 @@ const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 int CLKpin = 4;    // <-- Arduino pin delivering the clock pulses to pin 3 (CLK) of the TSL1402R / pin 6 of TSL2014
 int SIpin = 6;     // <-- Arduino pin delivering the SI (serial-input) pulse to pin 2 of the TSL1402R / pin 2 of TSL2014
 int AOpin1 = 1;    // <-- Arduino pin connected to pin 4 (analog output 1)of the TSL1402R / pin 3 of TSL2014
-int AOpin2 = 2;    // <-- Arduino pin connected to pin 8 (analog output 2)of the TSL1402R / pin 8 of TSL2014 (separate pins for parallel; currently read in seriel)
 uint8_t IntArray[896]; // <-- the array where the readout of the photodiodes is stored, as integers (not enough memory for longer values)
-int val;
+int integrationtime = 0;   // <-- Variable to store the integration time
+int ledbrightness = 0;     // <-- Variable to store the led brightness level
+unsigned int milliseconds = 0;  // <-- Temp. variable to measure the integrationtime
+
 
 void setup() 
 {
@@ -53,35 +55,30 @@ void setup()
 }
 
 void loop() 
-{  
-  
-      analogWrite(5, analogRead(5)/4); //led brightness coupled to potentiometer
-      //   analogWrite(5, 40); // fixed LED brightness
-     
+{     
       // Stop the ongoing integration of light quanta from each photodiode by clocking in a SI pulse 
-      // into the sensors register:
+      // into the sensors register and reading out the pixels
       digitalWrite(SIpin, HIGH);
       ClockPulse();
       digitalWrite(SIpin, LOW);
-      //IntArray[0]=255;
-      // Next, read all 896 pixels in parallell. Store the result in the array. Each clock pulse 
-      // causes a new pixel to expose its value on the two outputs:
+      // Each clock pulse causes a new pixel to expose its value on the two outputs:
+      integrationtime = millis() - milliseconds;
       for(int i=0; i < 896; i++)
       {
-          delayMicroseconds(20);// <-- We add a delay to stabilize the AO output from the sensor
+          delayMicroseconds(10);// <-- We add a delay to stabilize the AO output from the sensor
           IntArray[i] = analogRead(AOpin1) / 4; //convert 1024 range to 256 range
-          //IntArray[i+448] = analogRead(AOpin2) / 4; // for reading both arrays in parallel
           ClockPulse(); 
       }
 
-      // Next, stop the ongoing integration of light quanta from each photodiode by clocking in a
-      // SI pulse:
-      //digitalWrite(SIpin, HIGH);
-      //ClockPulse(); 
-      //digitalWrite(SIpin, LOW);
+
+
+      // Read and set the LED brightness
+      ledbrightness = analogRead(5)/4;    //convert 1024 range to 256 range
+      analogWrite(5, ledbrightness);      // Set LED brightness
+
 
       // Next, send the measurement stored in the array to host computer using serial (rs-232).
-      // communication. This takes ~80 ms during whick time no clock pulses reaches the sensor. 
+      // communication. This takes ~220 ms during whick time no clock pulses reaches the sensor. 
       // No integration is taking place during this time from the photodiodes as the integration 
       // begins first after the 18th clock pulse after a SI pulse is inserted:
       Serial.print("!"); //Every measurement output starts with an exclamation mark
@@ -89,28 +86,29 @@ void loop()
       {
           Serial.print(IntArray[i]); Serial.print(",");
       }
-      Serial.print(IntArray[895]);  
+      Serial.print(IntArray[895]); Serial.print("|");
+      Serial.print(ledbrightness); Serial.print(",");
+      Serial.print(integrationtime);
       Serial.println(""); // <-- Send a linebreak to indicate the measurement is transmitted.
 
-      // Next, a new measuring cycle is starting once 18 clock pulses have passed. At  
-      // that time, the photodiodes are once again active. We clock out the SI pulse through
-      // the 896 bit register in order to be ready to halt the ongoing measurement at our will
-      // (by clocking in a new SI pulse):
-      for(int i = 0; i < 900; i++)
+      
+      // Start new integration period (same structure as when stopping the integration period)
+      // => Integration time is defined as the time between subsequent readings of a pixel
+      digitalWrite(SIpin, HIGH);
+      ClockPulse();
+      digitalWrite(SIpin, LOW);
+      // Each clock pulse causes a new pixel to expose its value on the two outputs:
+      milliseconds = millis();  //Start time of the integration
+      for(int i=0; i < 896; i++)
       {
-          if(i==18)
-          {
-              // Now the photodiodes goes active..
-              // An external trigger can be placed here
-          }
+          delayMicroseconds(10);
+          IntArray[i] = analogRead(AOpin1) / 4;
           ClockPulse(); 
-      }    
-
-      // The integration time of the current program / measurement cycle is ~3ms. If a larger time
-      // of integration is wanted, uncomment the next line:
-     // delay(100);// <-- Add 100 ms integration time
-     val = int(analogRead(3)/5);
-     delay(val); //integration time from potentiometer
+      }
+      
+      
+      // Add additional integration time (without any delay it is ~42ms)
+     delay(analogRead(3)/4); // Read integration delay from potentiometer
 }
 
 // This function generates an outgoing clock pulse from the Arduino digital pin 'CLKpin'. This clock
