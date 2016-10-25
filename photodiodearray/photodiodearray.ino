@@ -73,7 +73,7 @@ void loop()
 
 
       // Read and set the LED brightness
-      ledbrightness = analogRead(5)/4;    //convert 1024 range to 256 range
+      ledbrightness = analogRead(5)/8;    //convert 1024 range to 256 range
       analogWrite(5, ledbrightness);      // Set LED brightness
 
 

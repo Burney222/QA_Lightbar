@@ -113,7 +113,7 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
         print "Try reconnecting the Arduino."
         sys.exit(1)
 
-    parameterbox.set_text("LED brightness: {}\nIntegrationtime (ms): {}".format(ledbrightness,
+    parameterbox.set_text("LED brightness level: {}\nIntegration time (ms): {}".format(ledbrightness,
                          integrationtime))
     y = [val / 51.0 for val in y]   #Downscaling
     line.set_data(x, y)
