@@ -65,7 +65,8 @@ except:
 fig = plt.figure(figsize=(16,8), facecolor = "white")
 permline, = plt.plot([], [], linewidth=2, color="r")    #Line that is triggered on click (for ref.)
 line, = plt.plot([], [], linewidth=2, color="b")
-plt.plot([0,895], [3.55, 3.55], "k--")      #Saturation level
+plt.plot([0,895], [3.63, 3.63], "k--")      #Saturation level
+plt.text(0.01, 0.735, "Saturation level", size=13, transform=plt.gca().transAxes)
 plt.ylabel("Intensity (Volts)", fontsize=20)
 plt.xlabel("Channel", fontsize=20)
 plt.title("Lightyield Measurement with Arduino/TAOS TSL2014", fontsize=22)
@@ -88,8 +89,15 @@ box_perm1 = plt.text(0.45, 0.9, "null", size=20, transform=plt.gca().transAxes,
 box_perm2 = plt.text(0.45, 0.9, "Click to freeze\ncurrent measurement!", size=20,
         transform=plt.gca().transAxes, bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
 
+#Markers to indicate the mean
+marker_blue, = plt.plot(-1000, 0.0, "b<", ms=10, clip_on=False)
+marker_red, = plt.plot(-1000, 0.0, "r<", ms=10, clip_on=False)
+plt.text(1.02, 0.5, "Mean values", size=20, transform=plt.gca().transAxes, rotation=270)
+
+
 # Function that is called sequentially and updates the plot
-def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, parameterbox):
+def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, parameterbox,
+                marker_blue, marker_red):
 
     x = list(range(896))
     #Try 5 times to get a correct serial line (i.e. data from all 896 channels)
@@ -113,13 +121,14 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
         print "Try reconnecting the Arduino."
         sys.exit(1)
 
-    parameterbox.set_text("LED brightness level: {}\nIntegration time (ms): {}".format(ledbrightness,
-                         integrationtime))
+    parameterbox.set_text("LED brightness level: {:>4}\nIntegration time (ms): {:>3}".format(
+                         ledbrightness, integrationtime))
     y = [val / 51.0 for val in y]   #Downscaling
     line.set_data(x, y)
 
-    #Update box texts
+    #Update box texts and markers
     avg = np.mean(y)
+    marker_blue.set_data(900, avg)
     rel_std = np.std(y) / avg if avg != 0 else "null"
     box1.set_text("mean = {:.5}".format(avg))
     box2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
@@ -139,6 +148,7 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
         box_perm1.set_text("mean = {:.5}".format(avg))
         box_perm2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
         box_perm2.set_y(0.8)
+        marker_red.set_data(900, avg)
         if avg >= 1. and avg <= 3.:
             box_perm1.set_color("g")
         else:
@@ -150,7 +160,7 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
 
         clicked = False #Change click to false again
 
-    return line, permline, box1, box2, box_perm1, box_perm2, parameterbox
+    return line, permline, box1, box2, box_perm1, box_perm2, parameterbox, marker_blue, marker_red
 
 # Define behaviour when clicking
 def onClick(event):
@@ -161,5 +171,6 @@ def onClick(event):
 
 fig.canvas.mpl_connect('button_press_event', onClick)
 anim = animation.FuncAnimation(fig, update_line, fargs=[line, permline, box1, box2, box_perm1,
-                    box_perm2, parameterbox], interval=200, blit=False, repeat=True, frames=None)
+                    box_perm2, parameterbox, marker_blue, marker_red], interval=200, blit=False,
+                    repeat=True, frames=None)
 plt.show()
