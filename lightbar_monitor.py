@@ -121,7 +121,7 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
         print "Try reconnecting the Arduino."
         sys.exit(1)
 
-    parameterbox.set_text("LED brightness level: {:>4}\nIntegration time (ms): {:>3}".format(
+    parameterbox.set_text("LED brightness level (Ref: 10): {:>3}\nIntegration time/ms  (Ref: 80): {:>3}".format(
                          ledbrightness, integrationtime))
     y = [val / 51.0 for val in y]   #Downscaling
     line.set_data(x, y)
@@ -132,11 +132,11 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
     rel_std = np.std(y) / avg if avg != 0 else "null"
     box1.set_text("mean = {:.5}".format(avg))
     box2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
-    if avg >= 1. and avg <= 3.:
+    if avg >= 1.:
         box1.set_color("g")
     else:
         box1.set_color("r")
-    if rel_std <= 0.25:
+    if rel_std <= 0.5:
         box2.set_color("g")
     else:
         box2.set_color("r")
@@ -149,14 +149,8 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
         box_perm2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
         box_perm2.set_y(0.8)
         marker_red.set_data(900, avg)
-        if avg >= 1. and avg <= 3.:
-            box_perm1.set_color("g")
-        else:
-            box_perm1.set_color("r")
-        if rel_std <= 0.25:
-            box_perm2.set_color("g")
-        else:
-            box_perm2.set_color("r")
+        box_perm1.set_color(box1.get_color())
+        box_perm2.set_color(box2.get_color())
 
         clicked = False #Change click to false again
 
