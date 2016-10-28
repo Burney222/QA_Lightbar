@@ -66,6 +66,7 @@ fig = plt.figure(figsize=(16,8), facecolor = "white")
 permline, = plt.plot([], [], linewidth=2, color="r")    #Line that is triggered on click (for ref.)
 line, = plt.plot([], [], linewidth=2, color="b")
 plt.plot([0,895], [3.63, 3.63], "k--")      #Saturation level
+plt.plot([0,895], [1, 1], "k--")      #Lower level
 plt.text(0.01, 0.735, "Saturation level", size=13, transform=plt.gca().transAxes)
 plt.ylabel("Intensity (Volts)", fontsize=20)
 plt.xlabel("Channel", fontsize=20)
@@ -132,12 +133,16 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
     rel_std = np.std(y) / avg if avg != 0 else "null"
     box1.set_text("mean = {:.5}".format(avg))
     box2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
-    if avg >= 1.:
+    if avg >= 1.3:
         box1.set_color("g")
+    elif avg >= 1.2:
+        box1.set_color("orange")
     else:
         box1.set_color("r")
-    if rel_std <= 0.5:
+    if rel_std <= 0.4:
         box2.set_color("g")
+    elif rel_std <= 0.5:
+        box2.set_color("orange")
     else:
         box2.set_color("r")
 
