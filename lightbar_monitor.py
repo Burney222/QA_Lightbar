@@ -80,7 +80,14 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
     #Smear data when button was pressed
     global pressed
     if pressed:
-        y = smear_data(y, 201)
+        n_channels = 501
+        channel_numbers = np.asarray(range(n_channels)) - n_channels//2
+        channel_weights = channel_weight_model(channel_numbers, (n_channels-1)/6)   #Model as sinus
+        for i, weight in enumerate(channel_weights):
+            if weight < 0:
+                channel_weights[i] = 0
+        channel_weights = channel_weights/np.sum(channel_weights)
+        y = smear_data(y, n_channels, channel_weights)
         smearing_text.set_text("SMEARED!")
         smearing_text.set_x(405)
     else:
@@ -162,18 +169,18 @@ def smear_data(data, n_channels=1, channel_weights=None):
     """
     #Consistency checks
     if n_channels < 1:
-        raise SystemExit("Number of channels must be greater-equal than 1.")
+        raise SystemExit("Error: Number of channels must be greater-equal than 1.")
     if n_channels % 2 != 1:
-        raise SystemExit("Number of channels must be an odd number.")
-    if channel_weights and len(channel_weights) != n_channels:
-        raise SystemExit("Provided channel weights does not match number of channels")
-    if channel_weights:
+        raise SystemExit("Error: Number of channels must be an odd number.")
+    if channel_weights is not None and len(channel_weights) != n_channels:
+        raise SystemExit("Error: Provided channel weights does not match number of channels")
+    if channel_weights is not None:
         for weight in channel_weights:
             if weight < 0:
-                raise SystemExit("Channel weights must be greater than 0.")
-    if not channel_weights:
+                raise SystemExit("Error: Channel weights must be greater than 0.")
+    if channel_weights is None:
         channel_weights = np.ones(n_channels)/n_channels
-    elif np.sum(channel_weights) != 1:
+    elif np.sum(channel_weights) < 0.999999 or np.sum(channel_weights > 1.000001):
         print "Warning: Channel weights not normalised - normalising them..."
         channel_weights = np.asarray(channel_weights)/np.sum(channel_weights)
 
@@ -199,6 +206,25 @@ def smear_data(data, n_channels=1, channel_weights=None):
 
 
 
+def channel_weight_model(x, a):
+    """Function to model the dependence of the absorbed light in a photo-diode and the channel
+    number away from the center. Used to calculate the channel weights. Obtained from some crazy
+    reflections...
+
+    Parameters
+    ----------
+    x: float, numpy array
+        Point(s) where the evaluate the function.
+
+    a: float
+        Parameter which can be interpreted as the distance between the lightbar and the photodiodes
+
+    Returns
+    -------
+    out: float, numpy array
+        Evaluated points.
+    """
+    return np.absolute(a) / ( a**2 + x**2 )**2
 
 
 
