@@ -81,8 +81,10 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
     global pressed
     if pressed:
         n_channels = 501
-        channel_numbers = np.asarray(range(n_channels)) - n_channels//2
-        channel_weights = channel_weight_model(channel_numbers, (n_channels-1)/6)   #Model as sinus
+        channel_numbers = np.asarray(range(n_channels)) - n_channels//2 #symmetric around zero
+        #Different models (comment out the one that you want)
+        channel_weights = channel_weight_model(channel_numbers, (n_channels-1)/6)
+        #channel_weights = cos_weight_model(channel_numbers)
         for i, weight in enumerate(channel_weights):
             if weight < 0:
                 channel_weights[i] = 0
@@ -186,9 +188,15 @@ def smear_data(data, n_channels=1, channel_weights=None):
 
     #Create new artificial data array with extra zeros in the beginning and at the end to handle
     #the channels at the borders
-    extended_data = np.array(data)
-    extended_data = np.insert(extended_data, 0, np.zeros(n_channels//2))
-    extended_data = np.append(extended_data, np.zeros(n_channels//2))
+    #extended_data = np.array(data)
+    #extended_data = np.insert(extended_data, 0, np.zeros(n_channels//2))
+    #extended_data = np.append(extended_data, np.zeros(n_channels//2))
+
+    #Create new artificial data array with outer channels being mirrored and attached at the edges
+    tempdata = np.array(data)
+    extended_data = np.array(tempdata)
+    extended_data = np.insert(extended_data, 0, np.flipud(tempdata)[-1*n_channels//2:])
+    extended_data = np.append(extended_data, np.flipud(tempdata)[:n_channels//2])
 
     #Create output data array
     smeared_data = np.zeros(len(data))
@@ -209,7 +217,7 @@ def smear_data(data, n_channels=1, channel_weights=None):
 def channel_weight_model(x, a):
     """Function to model the dependence of the absorbed light in a photo-diode and the channel
     number away from the center. Used to calculate the channel weights. Obtained from some crazy
-    reflections...
+    thoughts...
 
     Parameters
     ----------
@@ -226,6 +234,10 @@ def channel_weight_model(x, a):
     """
     return np.absolute(a) / ( a**2 + x**2 )**2
 
+
+def cos_weight_model(x):
+    #Is zero at the edges of x
+    return np.cos( np.pi/(2*x[-1]) * x )
 
 
 
