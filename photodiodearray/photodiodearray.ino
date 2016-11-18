@@ -108,7 +108,7 @@ void loop()
       
       
       // Add additional integration time (without any delay it is ~42ms)
-     delay(analogRead(3)/4); // Read integration delay from potentiometer
+     delay(analogRead(3)/8); // Read integration delay from potentiometer
 }
 
 // This function generates an outgoing clock pulse from the Arduino digital pin 'CLKpin'. This clock
