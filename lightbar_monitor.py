@@ -86,21 +86,22 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
     #Smear data when button was pressed
     global pressed
     if pressed:
-        n_channels = 501
+        n_channels = 801
         channel_numbers = np.asarray(range(n_channels)) - n_channels//2 #symmetric around zero
         #Different models (comment out the one that you want)
-        channel_weights = channel_weight_model(channel_numbers, (n_channels-1)/6)
-        #channel_weights = cos_weight_model(channel_numbers)
+        #channel_weights = channel_weight_model(channel_numbers, (n_channels-1)/6)
+        channel_weights = cos_weight_model(channel_numbers)
+        #channel_weights = gaussian_weight_model(channel_numbers)
         for i, weight in enumerate(channel_weights):
             if weight < 0:
                 channel_weights[i] = 0
         channel_weights = channel_weights/np.sum(channel_weights)
         y = smear_data(y, n_channels, channel_weights)
         smearing_text.set_text("SMEARED!")
-        smearing_text.set_x(405)
+        smearing_text.set_x(320)
     else:
-        smearing_text.set_text("Press keyboard button to smear data!")
-        smearing_text.set_x(250)
+        smearing_text.set_text("Press keyboard button\nto smear data!")
+        smearing_text.set_x(310)
 
     line.set_data(x, y)
 
@@ -129,7 +130,7 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
         permline.set_data(x, y)     #Set the permanent line to the current data
         box_perm1.set_text("mean = {:.5}".format(avg))
         box_perm2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
-        box_perm2.set_y(0.8)
+        box_perm2.set_y(0.90)
         marker_red.set_data(900, avg)
         box_perm1.set_color(box1.get_color())
         box_perm2.set_color(box2.get_color())
@@ -249,7 +250,11 @@ def cos_weight_model(x):
     return np.cos( np.pi/(2*x[-1]) * x )
 
 
-
+def gaussian_weight_model(x):
+    #Symmetric gaussian around zero where sigma is chosen to be one third of the outer edges
+    #This results in the amplitude at the edges at 1 permille of the peak
+    sigma = x[-1]/3
+    return np.exp( -1/2 * (x/sigma)**2 )
 
 
 
@@ -275,33 +280,33 @@ if __name__ == "__main__":
 
 
     # Define the appearance of the plot
-    fig = plt.figure(figsize=(16,8), facecolor = "white")
+    fig = plt.figure(figsize=(16,10), facecolor = "white")
     permline, = plt.plot([], [], linewidth=2, color="r")    #Line that is triggered on click (for ref.)
     line, = plt.plot([], [], linewidth=2, color="b")
     plt.plot([0,895], [3.63, 3.63], "k--")      #Saturation level
     plt.plot([0,895], [1, 1], "k--")      #Lower level
-    plt.text(0.01, 0.735, "Saturation level", size=13, transform=plt.gca().transAxes)
-    smearing_text = plt.text(250, 0.1, "Press keyboard button to smear data!", size=20)
-    plt.ylabel("Intensity (Volts)", fontsize=20)
-    plt.xlabel("Channel", fontsize=20)
-    plt.title("Lightyield Measurement with Arduino/TAOS TSL2014", fontsize=22)
+    plt.text(0.01, 0.87, "Saturation level", size=10, transform=plt.gca().transAxes)
+    smearing_text = plt.text(310, 3.95, "Press keyboard button\nto smear data!", size=14)
+    plt.ylabel("Intensity (Volts)", fontsize=18)
+    plt.xlabel("Channel", fontsize=18)
+    plt.title("Lightyield Measurement with Arduino/TAOS TSL2014", fontsize=20)
     plt.xlim(0, 895)
     plt.xticks(range(0, 895, 100), fontsize=16)
-    plt.ylim(0, 5)
-    plt.yticks(range(0, 5, 1), fontsize=16)
+    plt.ylim(0, 4.2)
+    plt.yticks(range(0, 4, 1), fontsize=16)
     plt.grid()  #Plot grid
 
     # Boxes that store information about the mean and std across the different channels
-    parameterbox = plt.text(0.01, 0.9, "no data", size=20, transform=plt.gca().transAxes,
+    parameterbox = plt.text(0.01, 0.925, "no data", size=16, transform=plt.gca().transAxes,
             bbox=dict(boxstyle="round", ec='k', fc='w', lw="1"))   #LED brightness and integration time
-    box1 = plt.text(0.75, 0.9, "no data", size=20, transform=plt.gca().transAxes,
+    box1 = plt.text(0.8, 0.96, "no data", size=16, transform=plt.gca().transAxes,
             bbox=dict(boxstyle="round", ec='b', fc='w', lw="2"))
-    box2 = plt.text(0.75, 0.8, "no data", size=20, transform=plt.gca().transAxes,
+    box2 = plt.text(0.8, 0.90, "no data", size=16, transform=plt.gca().transAxes,
             bbox=dict(boxstyle="round",ec='b',fc='w', lw="2"))
 
-    box_perm1 = plt.text(0.45, 0.9, "null", size=20, transform=plt.gca().transAxes,
+    box_perm1 = plt.text(0.55, 0.96, "null", size=16, transform=plt.gca().transAxes,
             bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
-    box_perm2 = plt.text(0.45, 0.9, "Mouse click to freeze\ncurrent measurement!", size=20,
+    box_perm2 = plt.text(0.55, 0.925, "Mouse click to freeze\ncurrent measurement!", size=16,
             transform=plt.gca().transAxes, bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
 
     # Variables that store the parameters of LED brightness and integration time for the permanent

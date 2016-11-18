@@ -1,0 +1,6 @@
+The measurements in this folder have been performed with the same settings!
+=> LED brightness = 5
+=> Integration time = 50 ms
+
+The red curve is the original measurement while the blue curve is artificially smeared with a
+cosine function and n_channels = 801
