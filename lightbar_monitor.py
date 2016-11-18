@@ -28,11 +28,16 @@ def print_figure_new(self, filename, *args, **kwargs):
     xcheck, y2 = permline.get_data() #red line
     if not xcheck:  #xcheck is empty
         y2 = np.zeros(len(y1))
+        y2 -= 1
     elif x != xcheck:
         print "Something went wrong when saving the raw data in {}".format(csvfilename)
         sys.exit(1)
     np.savetxt(csvfilename, np.asarray([x,y1,y2]).transpose(), fmt=["%i", "%.8f", "%.8f"],
-               header="Channel, Intensity (blue line) [V], Intensity (red line, if applicable) [V]")
+               header="Blue curve: LED brightness = {0}, Integration time = {1}\n"
+                      "Red curve: LED brightness = {2}, Integration time = {3} (if applicable)\n"
+                      "Channel, Intensity (blue line) [V], Intensity (red line, if applicable) [V]"
+                      .format(blue_led, blue_int, red_led, red_int))
+
     print "Saving raw data and plot to {} and {}".format(csvfilename, filename)
     #run the normal method
     return print_figure(self, filename, *args, **kwargs)
@@ -63,7 +68,8 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
     try:
         #Transform string into list of integers for each channel
         values, params = reading.split("|")
-        ledbrightness, integrationtime  = map(int, params.split(","))
+        global blue_led, blue_int
+        blue_led, blue_int  = map(int, params.split(","))
         y = list(map(int, values.split(",")))
     except:
         print "Error! Could not convert serial input string into list."
@@ -74,7 +80,7 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
         sys.exit(1)
 
     parameterbox.set_text("LED brightness level (Ref: 10): {:>3}\nIntegration time/ms  (Ref: 80): {:>3}".format(
-                         ledbrightness, integrationtime))
+                         blue_led, blue_int))
     y = [val / 51.0 for val in y]   #Downscaling
 
     #Smear data when button was pressed
@@ -127,6 +133,9 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
         marker_red.set_data(900, avg)
         box_perm1.set_color(box1.get_color())
         box_perm2.set_color(box2.get_color())
+        global red_led, red_int
+        red_led = blue_led
+        red_int = blue_int
 
         clicked = False #Change click to false again
 
@@ -294,6 +303,15 @@ if __name__ == "__main__":
             bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
     box_perm2 = plt.text(0.45, 0.9, "Mouse click to freeze\ncurrent measurement!", size=20,
             transform=plt.gca().transAxes, bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
+
+    # Variables that store the parameters of LED brightness and integration time for the permanent
+    # line
+    blue_led = -1
+    blue_int = -1
+    red_led = -1
+    red_int = -1
+
+
 
     #Markers to indicate the mean
     marker_blue, = plt.plot(-1000, 0.0, "b<", ms=10, clip_on=False)
