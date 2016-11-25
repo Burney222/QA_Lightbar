@@ -1,0 +1,2 @@
+Plots in this folder are to illustrate the light intensity problem with the USB board.
+Lightbar No 87 was used for this investigation.

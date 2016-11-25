@@ -10,6 +10,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.backend_bases import FigureCanvasBase
+matplotlib.rcdefaults() #Use default matplotlib parameters for portability reasons
 import atexit
 import numpy as np
 from os.path import splitext
@@ -280,7 +281,7 @@ if __name__ == "__main__":
 
 
     # Define the appearance of the plot
-    fig = plt.figure(figsize=(16,10), facecolor = "white")
+    fig = plt.figure(figsize=(16,8.9), facecolor = "white")
     permline, = plt.plot([], [], linewidth=2, color="r")    #Line that is triggered on click (for ref.)
     line, = plt.plot([], [], linewidth=2, color="b")
     plt.plot([0,895], [3.63, 3.63], "k--")      #Saturation level

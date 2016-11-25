@@ -1,0 +1,3 @@
+Light yield/uniformity measurements with the fibre mat go into this folder. The plots shown here are with the minimum light intensity to observe the first five photo peaks.
+
+The lightyield settings are stated in the filename (e.g. HD57_2_45.png refers to a current bias of 2 and brightness of 45)
