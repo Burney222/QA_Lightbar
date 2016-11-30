@@ -14,11 +14,11 @@
 64 good
 70 good
 71 good
-72 bad
+72 ok
 73 good
 74 bad
 75 bad
-76 bad
+76 ok
 77 ok
 78 good
 79 ok
@@ -28,8 +28,8 @@
 83 good
 84 good
 85 good
-86 bad
-87 bad
+86 ok
+87 ok
 88 ok
 89 ok
 90 bad

@@ -10,14 +10,20 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.backend_bases import FigureCanvasBase
+from matplotlib.patches import FancyBboxPatch
 matplotlib.rcdefaults() #Use default matplotlib parameters for portability reasons
 import atexit
 import numpy as np
 from os.path import splitext
+import argparse
 
-# Global variables that stores information about if there was a mouse click or key press
+# Global variables that store information about if there was a mouse click or key press
 clicked = False
 pressed = False
+verbose = False
+y_limit = 4
+n_parts = 4  #Number of parts for calculating the median uniformity
+
 
 #Modify the print_figure method in FigureCanvasBase to also save the raw data in .csv-file
 #when using the save button in the graphical user interface
@@ -54,8 +60,8 @@ def exit_handler():
         ser.close()
 
 # Function that is called sequentially and updates the plot
-def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, parameterbox,
-                marker_blue, marker_red, smearing_text):
+def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity, red_mean, red_std,
+                red_uniformity, parameterbox, marker_blue, marker_red, smearing_text, median_lines):
 
     x = list(range(896))
     #Try 5 times to get a correct serial line (i.e. data from all 896 channels)
@@ -80,68 +86,101 @@ def update_line(iteration, line, permline, box1, box2, box_perm1, box_perm2, par
         print "Try reconnecting the Arduino."
         sys.exit(1)
 
-    parameterbox.set_text("LED brightness level (Ref: 10): {:>3}\nIntegration time/ms  (Ref: 80): {:>3}".format(
+    parameterbox.set_text("LED brightness level (Ref: 5): {:>3}\nIntegration time/ms  (Ref: 50): {:>3}".format(
                          blue_led, blue_int))
     y = [val / 51.0 for val in y]   #Downscaling
 
-    #Smear data when button was pressed
-    global pressed
-    if pressed:
-        n_channels = 801
-        channel_numbers = np.asarray(range(n_channels)) - n_channels//2 #symmetric around zero
-        #Different models (comment out the one that you want)
-        #channel_weights = channel_weight_model(channel_numbers, (n_channels-1)/6)
-        channel_weights = cos_weight_model(channel_numbers)
-        #channel_weights = gaussian_weight_model(channel_numbers)
-        for i, weight in enumerate(channel_weights):
-            if weight < 0:
-                channel_weights[i] = 0
-        channel_weights = channel_weights/np.sum(channel_weights)
-        y = smear_data(y, n_channels, channel_weights)
-        smearing_text.set_text("SMEARED!")
-        smearing_text.set_x(320)
-    else:
-        smearing_text.set_text("Press keyboard button\nto smear data!")
-        smearing_text.set_x(310)
+    #In VERBOSE mode: Smear data when button was pressed
+    if verbose:
+        global pressed
+        if pressed:
+            n_channels = 801
+            channel_numbers = np.asarray(range(n_channels)) - n_channels//2 #symmetric around zero
+            #Different models (comment out the one that you want)
+            #channel_weights = channel_weight_model(channel_numbers, (n_channels-1)/6)
+            channel_weights = cos_weight_model(channel_numbers)
+            #channel_weights = gaussian_weight_model(channel_numbers)
+            for i, weight in enumerate(channel_weights):
+                if weight < 0:
+                    channel_weights[i] = 0
+            channel_weights = channel_weights/np.sum(channel_weights)
+            y = smear_data(y, n_channels, channel_weights)
+            smearing_text.set_text("SMEARED!")
+        else:
+            smearing_text.set_text("Press keyboard button\nto smear data!")
 
+    #Plot the data!
     line.set_data(x, y)
+
 
     #Update box texts and markers
     avg = np.mean(y)
     marker_blue.set_data(900, avg)
     rel_std = np.std(y) / avg if avg != 0 else "null"
-    box1.set_text("mean = {:.5}".format(avg))
-    box2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
-    if avg >= 1.3:
-        box1.set_color("g")
-    elif avg >= 1.2:
-        box1.set_color("orange")
+    uniformity = median_uniformity(y, n_parts=n_parts)
+    blue_mean.set_text("mean = {:.5}".format(avg))
+    blue_std.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
+    blue_uniformity.set_text("uniform. = {:.5}".format(uniformity))
+
+    #Mean color
+    if avg >= 0.5:
+        blue_mean.set_color("g")
+    elif avg >= 0.4:
+        blue_mean.set_color("orange")
     else:
-        box1.set_color("r")
+        blue_mean.set_color("r")
+
+    #Rel. std
     if rel_std <= 0.4:
-        box2.set_color("g")
-    elif rel_std <= 0.5:
-        box2.set_color("orange")
+        blue_std.set_color("g")
+    elif rel_std <= 0.45:
+        blue_std.set_color("orange")
     else:
-        box2.set_color("r")
+        blue_std.set_color("r")
 
-    #Update permline and corresponding boxes if there was a click
-    global clicked
-    if clicked:
-        permline.set_data(x, y)     #Set the permanent line to the current data
-        box_perm1.set_text("mean = {:.5}".format(avg))
-        box_perm2.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
-        box_perm2.set_y(0.90)
-        marker_red.set_data(900, avg)
-        box_perm1.set_color(box1.get_color())
-        box_perm2.set_color(box2.get_color())
-        global red_led, red_int
-        red_led = blue_led
-        red_int = blue_int
+    #Median uniformity
+    if uniformity >= 0.4:
+        blue_uniformity.set_color("g")
+    elif uniformity >= 0.36:
+        blue_uniformity.set_color("orange")
+    else:
+        blue_uniformity.set_color("r")
 
-        clicked = False #Change click to false again
+    #In VERBOSE mode: Update permline and corresponding boxes if there was a click
+    if verbose:
+        global clicked
+        if clicked:
+            permline.set_data(x, y)     #Set the permanent line to the current data
+            red_mean.set_text(blue_mean.get_text())
+            red_std.set_text(blue_std.get_text())
+            red_uniformity.set_text(blue_uniformity.get_text())
+            marker_red.set_data(900, avg)
+            red_mean.set_color(blue_mean.get_color())
+            red_std.set_color(blue_std.get_color())
+            red_uniformity.set_color(blue_uniformity.get_color())
+            global red_led, red_int
+            red_led = blue_led
+            red_int = blue_int
 
-    #return line, permline, box1, box2, box_perm1, box_perm2, parameterbox, marker_blue, marker_red, smearing_text
+            clicked = False #Change click to false again
+
+
+        #Plot the medians which are used for calculalating the median uniformity
+        medians = get_medians(np.asarray(y), n_parts)
+        ch_groups = np.split(np.asarray(range(len(y))), n_parts)
+        for i in range(len(medians)):
+            median_lines[i].set_data([ch_groups[i][0], ch_groups[i][-1]], [medians[i], medians[i]])
+
+    #Adjust the y axis limit
+    max_y = max(y)
+    ylim = plt.ylim()[1]
+    if max_y > ylim or max_y < 0.45*ylim:
+        plt.ylim(0, int(max_y)+1)
+
+
+
+
+
 
 # Define behaviour when clicking
 def onClick(event):
@@ -223,8 +262,6 @@ def smear_data(data, n_channels=1, channel_weights=None):
 
     return smeared_data
 
-
-
 def channel_weight_model(x, a):
     """Function to model the dependence of the absorbed light in a photo-diode and the channel
     number away from the center. Used to calculate the channel weights. Obtained from some crazy
@@ -245,11 +282,9 @@ def channel_weight_model(x, a):
     """
     return np.absolute(a) / ( a**2 + x**2 )**2
 
-
 def cos_weight_model(x):
     #Is zero at the edges of x
     return np.cos( np.pi/(2*x[-1]) * x )
-
 
 def gaussian_weight_model(x):
     #Symmetric gaussian around zero where sigma is chosen to be one third of the outer edges
@@ -257,58 +292,105 @@ def gaussian_weight_model(x):
     sigma = x[-1]/3
     return np.exp( -1/2 * (x/sigma)**2 )
 
+def median_uniformity(data, n_parts=4):
+    """Split data in n_parts, calc median for each split and return the ratio of the
+    min(medians)/max(medians). A larger value translates to a better uniformity!"""
+    medians = np.asarray(get_medians(data, n_parts))
 
+    return min(medians)/max(medians)
+
+def get_medians(data, n_parts=4):
+    """Helper function for median uniformity."""
+    datablocks = np.split(np.asarray(data), n_parts)
+    medians = []
+    for block in datablocks:
+        medians.append(np.median(block))
+
+    return medians
 
 
 if __name__ == "__main__":
     atexit.register(exit_handler)
 
+    #Reading the arguments
+    parser = argparse.ArgumentParser(description='Monitoring lightbars with the Arduino board.')
+    parser.add_argument('COMport', type=str, action="store",
+                        help='The COM port to which the Arduino is connected.')
+    parser.add_argument('-v', '--verbose', action='store_true', default=False,
+                        help='Turn on verbose output and behaviour.')
 
-    # Check if the COM port is correctly given as the argument
-    if len(sys.argv) != 2:
-        print "Error! One argument expected that defines the COM port of the Arduino"
-        print "\nExamples:\nWindows: python.exe ./{} <COMport>".format(sys.argv[0])
-        print "Mac/Linux: python {} <COMport>".format(sys.argv[0])
-        sys.exit(2)
-
+    options = parser.parse_args()
+    verbose = options.verbose
     # Try to connect to the Arduino
     try:
-        ser = serial.Serial(sys.argv[1], 115200, timeout=3)
+        ser = serial.Serial(options.COMport, 115200, timeout=3)
         print "Successfully connected to Arduino on {}".format(ser.name)
-    except:
-        print "Error! Arduino not found on {}".format(sys.argv[1])
-        sys.exit(2)
+    except OSError:
+        raise ValueError("Arduino not found on {}".format(options.COMport))
 
 
     # Define the appearance of the plot
     fig = plt.figure(figsize=(16,8.9), facecolor = "white")
     permline, = plt.plot([], [], linewidth=2, color="r")    #Line that is triggered on click (for ref.)
     line, = plt.plot([], [], linewidth=2, color="b")
+    median_lines = []
+    for i in range(n_parts):
+        median_lines.append( plt.plot([], [], linewidth=2, color="g")[0] )
     plt.plot([0,895], [3.63, 3.63], "k--")      #Saturation level
-    plt.plot([0,895], [1, 1], "k--")      #Lower level
-    plt.text(0.01, 0.87, "Saturation level", size=10, transform=plt.gca().transAxes)
-    smearing_text = plt.text(310, 3.95, "Press keyboard button\nto smear data!", size=14)
+    plt.text(0.01, 3.65, "Saturation level", size=10)
     plt.ylabel("Intensity (Volts)", fontsize=18)
     plt.xlabel("Channel", fontsize=18)
-    plt.title("Lightyield Measurement with Arduino/TAOS TSL2014", fontsize=20)
     plt.xlim(0, 895)
     plt.xticks(range(0, 895, 100), fontsize=16)
-    plt.ylim(0, 4.2)
-    plt.yticks(range(0, 4, 1), fontsize=16)
+    plt.ylim(0, 4)
+    plt.yticks(fontsize=16)
     plt.grid()  #Plot grid
 
-    # Boxes that store information about the mean and std across the different channels
-    parameterbox = plt.text(0.01, 0.925, "no data", size=16, transform=plt.gca().transAxes,
-            bbox=dict(boxstyle="round", ec='k', fc='w', lw="1"))   #LED brightness and integration time
-    box1 = plt.text(0.8, 0.96, "no data", size=16, transform=plt.gca().transAxes,
-            bbox=dict(boxstyle="round", ec='b', fc='w', lw="2"))
-    box2 = plt.text(0.8, 0.90, "no data", size=16, transform=plt.gca().transAxes,
-            bbox=dict(boxstyle="round",ec='b',fc='w', lw="2"))
 
-    box_perm1 = plt.text(0.55, 0.96, "null", size=16, transform=plt.gca().transAxes,
-            bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
-    box_perm2 = plt.text(0.55, 0.925, "Mouse click to freeze\ncurrent measurement!", size=16,
-            transform=plt.gca().transAxes, bbox=dict(boxstyle="round", ec='r', fc='w', lw="2"))
+    # Boxes that show information about the mean and std across the different channels
+    #LED brightness and integration time
+    parameterbox = plt.text(0.006, 1.025, "no data", size=16, transform=plt.gca().transAxes,
+                            bbox=dict(boxstyle="round", ec='k', fc='w', lw="1"), clip_on=False)
+
+    #Draw boxes that contain the mean and std/mean
+    box_x_blue = 0.81
+    box_x_red = 0.55
+    box_y = 1.02
+    box_width = 0.18
+    box_heigth = 0.092
+    #Blue box
+    plt.gca().add_patch( FancyBboxPatch((box_x_blue, box_y), box_width, box_heigth,
+                                         transform=plt.gca().transAxes, clip_on=False,
+                                         fc="none", ec="b", lw=2, boxstyle="round,pad=0.01") )
+    blue_mean = plt.text(box_x_blue, box_y+0.071, "no data", size=16, transform=plt.gca().transAxes,
+                         clip_on=False)
+    blue_std = plt.text(box_x_blue, box_y+0.04, "", size=16, transform=plt.gca().transAxes,
+                        clip_on=False)
+    blue_uniformity = plt.text(box_x_blue, box_y+0.005, "", size=16, transform=plt.gca().transAxes,
+                               clip_on=False)
+
+    #Verbose elements
+    if verbose:
+        smearing_text = plt.text(0.34, 1.03, "Press keyboard button\nto smear data!",
+                                transform=plt.gca().transAxes, clip_on=False, size=14)
+        #Red box
+        plt.gca().add_patch( FancyBboxPatch((box_x_red, box_y), box_width, box_heigth,
+                                             transform=plt.gca().transAxes, clip_on=False,
+                                             fc="none", ec="r", lw=2, boxstyle="round,pad=0.01") )
+        red_mean = plt.text(box_x_red, box_y+0.071, "", size=16, transform=plt.gca().transAxes,
+                             clip_on=False)
+        red_std = plt.text(box_x_red, box_y+0.04, "", size=16,
+                           transform=plt.gca().transAxes, clip_on=False)
+        red_uniformity = plt.text(box_x_red, box_y+0.005, "Click to freeze\ncurrent data!", size=16,
+                                   transform=plt.gca().transAxes, clip_on=False)
+
+    else:
+        plt.title("Lightyield Measurement with Arduino\nand TAOS TSL2014")
+        smearing_text = None
+        red_mean = None
+        red_std = None
+        red_uniformity = None
+
 
     # Variables that store the parameters of LED brightness and integration time for the permanent
     # line
@@ -327,7 +409,8 @@ if __name__ == "__main__":
     fig.canvas.mpl_connect('button_press_event', onClick)   #Mouse button click
     fig.canvas.mpl_connect('key_press_event', onPress)      #Key button press
 
-    anim = animation.FuncAnimation(fig, update_line, fargs=[line, permline, box1, box2, box_perm1,
-                        box_perm2, parameterbox, marker_blue, marker_red, smearing_text],
-                        interval=200, blit=False, repeat=True, frames=None)
+    anim = animation.FuncAnimation(fig, update_line, fargs=[line, permline, blue_mean, blue_std,
+                                   blue_uniformity, red_mean, red_std, red_uniformity, parameterbox,
+                                   marker_blue, marker_red, smearing_text, median_lines],
+                                   interval=200, blit=False, repeat=True, frames=None)
     plt.show()
