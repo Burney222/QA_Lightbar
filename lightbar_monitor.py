@@ -25,6 +25,17 @@ y_limit = 4
 n_parts = 4  #Number of parts for calculating the median uniformity
 
 
+# Limits
+mean_green = 0.5
+mean_orange = 0.4
+
+rel_std_green = 0.4
+rel_std_orange = 0.45
+
+uniform_green = 0.4
+uniform_orange = 0.36
+
+
 #Modify the print_figure method in FigureCanvasBase to also save the raw data in .csv-file
 #when using the save button in the graphical user interface
 print_figure = FigureCanvasBase.print_figure
@@ -86,7 +97,7 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
         print "Try reconnecting the Arduino."
         sys.exit(1)
 
-    parameterbox.set_text("LED brightness level (Ref: 5): {:>3}\nIntegration time/ms  (Ref: 50): {:>3}".format(
+    parameterbox.set_text("LED brightness level (Ref:   5): {:>3}\nIntegration time/ms  (Ref: 50): {:>3}".format(
                          blue_led, blue_int))
     y = [val / 51.0 for val in y]   #Downscaling
 
@@ -118,30 +129,30 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
     marker_blue.set_data(900, avg)
     rel_std = np.std(y) / avg if avg != 0 else "null"
     uniformity = median_uniformity(y, n_parts=n_parts)
-    blue_mean.set_text("mean = {:.5}".format(avg))
-    blue_std.set_text(r"$\sigma$/mean = {:.5}".format(rel_std))
+    blue_mean.set_text(r"mean$\,$     = {:.5}".format(avg))
+    blue_std.set_text(r"$\sigma$/mean $\,$ = {:.5}".format(rel_std))
     blue_uniformity.set_text("uniform. = {:.5}".format(uniformity))
 
     #Mean color
-    if avg >= 0.5:
+    if avg >= mean_green:
         blue_mean.set_color("g")
-    elif avg >= 0.4:
+    elif avg >= mean_orange:
         blue_mean.set_color("orange")
     else:
         blue_mean.set_color("r")
 
     #Rel. std
-    if rel_std <= 0.4:
+    if rel_std <= rel_std_green:
         blue_std.set_color("g")
-    elif rel_std <= 0.45:
+    elif rel_std <= rel_std_orange:
         blue_std.set_color("orange")
     else:
         blue_std.set_color("r")
 
     #Median uniformity
-    if uniformity >= 0.4:
+    if uniformity >= uniform_green:
         blue_uniformity.set_color("g")
-    elif uniformity >= 0.36:
+    elif uniformity >= uniform_orange:
         blue_uniformity.set_color("orange")
     else:
         blue_uniformity.set_color("r")
@@ -402,12 +413,17 @@ if __name__ == "__main__":
 
 
     #Markers to indicate the mean
+    plt.plot(902, mean_green, "g_", ms=15, mew=2.5, clip_on=False)  #Limit for the mean (green area)
+    plt.plot(902, mean_orange, "orange", marker="_", ms=15, mew=2.5, clip_on=False)  #Limit for the mean (green area)
     marker_blue, = plt.plot(-1000, 0.0, "b<", ms=10, clip_on=False)
     marker_red, = plt.plot(-1000, 0.0, "r<", ms=10, clip_on=False)
     plt.text(1.02, 0.5, "Mean values", size=20, transform=plt.gca().transAxes, rotation=270)
 
-    fig.canvas.mpl_connect('button_press_event', onClick)   #Mouse button click
-    fig.canvas.mpl_connect('key_press_event', onPress)      #Key button press
+
+    #Button clicks
+    if verbose:
+        fig.canvas.mpl_connect('button_press_event', onClick)   #Mouse button click
+        fig.canvas.mpl_connect('key_press_event', onPress)      #Key button press
 
     anim = animation.FuncAnimation(fig, update_line, fargs=[line, permline, blue_mean, blue_std,
                                    blue_uniformity, red_mean, red_std, red_uniformity, parameterbox,
