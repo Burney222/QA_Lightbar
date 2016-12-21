@@ -349,6 +349,8 @@ if __name__ == "__main__":
         median_lines.append( plt.plot([], [], linewidth=2, color="g")[0] )
     plt.plot([0,895], [3.63, 3.63], "k--")      #Saturation level
     plt.text(0.01, 3.65, "Saturation level", size=10)
+    plt.axvline(31.5)       #Active area in between
+    plt.axvline(863.5)      #Active area in between
     plt.ylabel("Intensity (Volts)", fontsize=18)
     plt.xlabel("Channel", fontsize=18)
     plt.xlim(0, 895)
