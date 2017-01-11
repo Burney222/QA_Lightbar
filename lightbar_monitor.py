@@ -23,7 +23,7 @@ pressed = False
 verbose = False
 y_limit = 4
 n_parts = 4  #Number of parts for calculating the median uniformity
-
+n_remove_channels = 32   #Remove this amount of channels on both edges! (inactive area)
 
 # Limits
 mean_green = 0.5
@@ -123,12 +123,13 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
     #Plot the data!
     line.set_data(x, y)
 
-
+    #Values for the calculation are without the inactive area!
+    y_calc = y[n_remove_channels:-n_remove_channels]
     #Update box texts and markers
-    avg = np.mean(y)
+    avg = np.mean(y_calc)
     marker_blue.set_data(900, avg)
-    rel_std = np.std(y) / avg if avg != 0 else "null"
-    uniformity = median_uniformity(y, n_parts=n_parts)
+    rel_std = np.std(y_calc) / avg if avg != 0 else "null"
+    uniformity = median_uniformity(y_calc, n_parts=n_parts)
     blue_mean.set_text(r"mean$\,$     = {:.5}".format(avg))
     blue_std.set_text(r"$\sigma$/mean $\,$ = {:.5}".format(rel_std))
     blue_uniformity.set_text("uniform. = {:.5}".format(uniformity))
@@ -177,8 +178,8 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
 
 
         #Plot the medians which are used for calculalating the median uniformity
-        medians = get_medians(np.asarray(y), n_parts)
-        ch_groups = np.split(np.asarray(range(len(y))), n_parts)
+        medians = get_medians(np.asarray(y_calc), n_parts)
+        ch_groups = np.split(np.asarray(range(n_remove_channels, len(y)-n_remove_channels)),n_parts)
         for i in range(len(medians)):
             median_lines[i].set_data([ch_groups[i][0], ch_groups[i][-1]], [medians[i], medians[i]])
 
@@ -349,8 +350,6 @@ if __name__ == "__main__":
         median_lines.append( plt.plot([], [], linewidth=2, color="g")[0] )
     plt.plot([0,895], [3.63, 3.63], "k--")      #Saturation level
     plt.text(0.01, 3.65, "Saturation level", size=10)
-    plt.axvline(31.5)       #Active area in between
-    plt.axvline(863.5)      #Active area in between
     plt.ylabel("Intensity (Volts)", fontsize=18)
     plt.xlabel("Channel", fontsize=18)
     plt.xlim(0, 895)
@@ -396,6 +395,9 @@ if __name__ == "__main__":
                            transform=plt.gca().transAxes, clip_on=False)
         red_uniformity = plt.text(box_x_red, box_y+0.005, "Click to freeze\ncurrent data!", size=16,
                                    transform=plt.gca().transAxes, clip_on=False)
+        #Indicate the inactive area
+        plt.axvspan(0, n_remove_channels-0.5, color="r", alpha=0.6, label="Hidden area    ")
+        plt.axvspan(895-n_remove_channels+0.5, 895, color="r", alpha=0.6)
 
     else:
         plt.title("Lightyield Measurement with Arduino\nand TAOS TSL2014")
@@ -403,6 +405,7 @@ if __name__ == "__main__":
         red_mean = None
         red_std = None
         red_uniformity = None
+        plt.xlim(n_remove_channels, 895-n_remove_channels)
 
 
     # Variables that store the parameters of LED brightness and integration time for the permanent
