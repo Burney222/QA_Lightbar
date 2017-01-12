@@ -26,8 +26,8 @@ n_parts = 4  #Number of parts for calculating the median uniformity
 n_remove_channels = 32   #Remove this amount of channels on both edges! (inactive area)
 
 # Limits
-mean_green = 0.5
-mean_orange = 0.4
+mean_green = 0.7
+mean_orange = 0.55
 
 rel_std_green = 0.4
 rel_std_orange = 0.45
@@ -97,7 +97,7 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
         print "Try reconnecting the Arduino."
         sys.exit(1)
 
-    parameterbox.set_text("LED brightness level (Ref:   5): {:>3}\nIntegration time/ms  (Ref: 50): {:>3}".format(
+    parameterbox.set_text("LED brightness level (Ref: 25): {:>3}\nIntegration time/ms  (Ref: 50): {:>3}".format(
                          blue_led, blue_int))
     y = [val / 51.0 for val in y]   #Downscaling
 
@@ -127,7 +127,7 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
     y_calc = y[n_remove_channels:-n_remove_channels]
     #Update box texts and markers
     avg = np.mean(y_calc)
-    marker_blue.set_data(900, avg)
+    marker_blue.set_data(marker_pos_x-2, avg)
     rel_std = np.std(y_calc) / avg if avg != 0 else "null"
     uniformity = median_uniformity(y_calc, n_parts=n_parts)
     blue_mean.set_text(r"mean$\,$     = {:.5}".format(avg))
@@ -166,7 +166,7 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
             red_mean.set_text(blue_mean.get_text())
             red_std.set_text(blue_std.get_text())
             red_uniformity.set_text(blue_uniformity.get_text())
-            marker_red.set_data(900, avg)
+            marker_red.set_data(marker_pos_x-2, avg)
             red_mean.set_color(blue_mean.get_color())
             red_std.set_color(blue_std.get_color())
             red_uniformity.set_color(blue_uniformity.get_color())
@@ -418,8 +418,9 @@ if __name__ == "__main__":
 
 
     #Markers to indicate the mean
-    plt.plot(902, mean_green, "g_", ms=15, mew=2.5, clip_on=False)  #Limit for the mean (green area)
-    plt.plot(902, mean_orange, "orange", marker="_", ms=15, mew=2.5, clip_on=False)  #Limit for the mean (green area)
+    marker_pos_x = 902 if verbose else 902-n_remove_channels
+    plt.plot(marker_pos_x, mean_green, "g_", ms=15, mew=2.5, clip_on=False)  #Limit for the mean (green area)
+    plt.plot(marker_pos_x, mean_orange, "orange", marker="_", ms=15, mew=2.5, clip_on=False)  #Limit for the mean (green area)
     marker_blue, = plt.plot(-1000, 0.0, "b<", ms=10, clip_on=False)
     marker_red, = plt.plot(-1000, 0.0, "r<", ms=10, clip_on=False)
     plt.text(1.02, 0.5, "Mean values", size=20, transform=plt.gca().transAxes, rotation=270)
