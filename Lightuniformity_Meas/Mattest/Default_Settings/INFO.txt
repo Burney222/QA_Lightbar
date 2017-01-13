@@ -1,1 +1,0 @@
-Def settings refer to 2.40 (laser intensity)

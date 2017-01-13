@@ -47,3 +47,36 @@
 121 ok
 123 ok
 125 ok
+127 bad
+#128 ok       #Redo
+129 bad
+130 ok
+131 ok
+132 ok
+133 good
+134 ok
+135 good
+#136 good     #Redo measurement
+137 bad
+138 ok
+#139 ok       #Redo measurement
+140 good
+141 good
+142 ok
+143 bad
+#144 ok      #Redo
+145 bad
+#146 ok      #Redo
+147 good
+148 bad
+149 ok
+150 bad
+151 ok
+152 ok
+153 ok
+154 bad
+155 bad
+156 bad
+157 bad
+
+
