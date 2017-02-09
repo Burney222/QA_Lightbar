@@ -23,6 +23,7 @@ pressed = False
 verbose = False
 y_limit = 4
 n_parts = 4  #Number of parts for calculating the median uniformity
+n_dyn_channels = 100 #For the dynamic median uniformity
 n_remove_channels = 32   #Remove this amount of channels on both edges! (inactive area)
 
 # Limits
@@ -33,7 +34,7 @@ rel_std_green = 0.4
 rel_std_orange = 0.45
 
 uniform_green = 0.4
-uniform_orange = 0.36
+uniform_orange = 0.35
 
 
 #Modify the print_figure method in FigureCanvasBase to also save the raw data in .csv-file
@@ -42,6 +43,8 @@ print_figure = FigureCanvasBase.print_figure
 def print_figure_new(self, filename, *args, **kwargs):
     #Additionally save the raw data as .csv
     csvfilename = splitext(filename)[0] + ".csv"
+    if not splitext(filename)[1]:   #Default extension
+        filename += ".pdf"
     x, y1 = line.get_data() #blue line
     xcheck, y2 = permline.get_data() #red line
     if not xcheck:  #xcheck is empty
@@ -72,7 +75,7 @@ def exit_handler():
 
 # Function that is called sequentially and updates the plot
 def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity, red_mean, red_std,
-                red_uniformity, parameterbox, marker_blue, marker_red, smearing_text, median_lines):
+                red_uniformity, parameterbox, marker_blue, marker_red, smearing_text, dyn_median_plot):
 
     x = list(range(896))
     #Try 5 times to get a correct serial line (i.e. data from all 896 channels)
@@ -129,7 +132,8 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
     avg = np.mean(y_calc)
     marker_blue.set_data(marker_pos_x-2, avg)
     rel_std = np.std(y_calc) / avg if avg != 0 else "null"
-    uniformity = median_uniformity(y_calc, n_parts=n_parts)
+    #uniformity = median_uniformity(y_calc, n_parts=n_parts)
+    uniformity = dynamic_median_uniformity(y_calc, n_dyn_channels)
     blue_mean.set_text(r"mean$\,$     = {:.5}".format(avg))
     blue_std.set_text(r"$\sigma$/mean $\,$ = {:.5}".format(rel_std))
     blue_uniformity.set_text("uniform. = {:.5}".format(uniformity))
@@ -149,6 +153,8 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
         blue_std.set_color("orange")
     else:
         blue_std.set_color("r")
+    #Always black
+    blue_std.set_color("k")
 
     #Median uniformity
     if uniformity >= uniform_green:
@@ -178,10 +184,15 @@ def update_line(iteration, line, permline, blue_mean, blue_std, blue_uniformity,
 
 
         #Plot the medians which are used for calculalating the median uniformity
-        medians = get_medians(np.asarray(y_calc), n_parts)
-        ch_groups = np.split(np.asarray(range(n_remove_channels, len(y)-n_remove_channels)),n_parts)
-        for i in range(len(medians)):
-            median_lines[i].set_data([ch_groups[i][0], ch_groups[i][-1]], [medians[i], medians[i]])
+        #medians = get_medians(np.asarray(y_calc), n_parts)
+        #ch_groups = np.split(np.asarray(range(n_remove_channels, len(y)-n_remove_channels)),n_parts)
+        #for i in range(len(medians)):
+        #    median_lines[i].set_data([ch_groups[i][0], ch_groups[i][-1]], [medians[i], medians[i]])
+
+        #Plot the medians which are used for calculalating the median uniformity
+        medians = get_dynamic_medians(y_calc, n_dyn_channels)
+        dyn_median_plot.set_data(np.asarray(range(len(medians)))+n_dyn_channels/2+n_remove_channels,
+                                 medians)
 
     #Adjust the y axis limit
     max_y = max(y)
@@ -320,6 +331,27 @@ def get_medians(data, n_parts=4):
 
     return medians
 
+def get_dynamic_medians(data, n_channels=100):
+    """Helper function for dynamic median uniformity."""
+    medians = [ np.median(data[i:i+n_channels]) for i in range(len(data)-n_channels+1)]
+
+    return medians
+
+def dynamic_median_uniformity(data, n_channels=100):
+    """The idea is similar to median_uniformity but not with fixed channel positions. Instead it is looped over blocks
+    of n_channels finding the block with the lowest and the largest median, and then calculating the ratio."""
+    min_median, max_median = None, None
+    if len(data) < n_channels:
+        raise ValueError("n_channels is larger than len(data)")
+    for i in range(len(data)-n_channels+1):
+        median = np.median(data[i:i+n_channels])
+        if median < min_median or min_median is None:
+            min_median = median
+        if median > max_median or max_median is None:
+            max_median = median
+
+    return min_median/max_median
+
 
 if __name__ == "__main__":
     atexit.register(exit_handler)
@@ -342,14 +374,15 @@ if __name__ == "__main__":
 
 
     # Define the appearance of the plot
-    fig = plt.figure(figsize=(16,8.9), facecolor = "white")
+    fig = plt.figure(figsize=(12,7), facecolor = "white")
     permline, = plt.plot([], [], linewidth=2, color="r")    #Line that is triggered on click (for ref.)
     line, = plt.plot([], [], linewidth=2, color="b")
-    median_lines = []
-    for i in range(n_parts):
-        median_lines.append( plt.plot([], [], linewidth=2, color="g")[0] )
+    #median_lines = []
+    #for i in range(n_parts):
+    #    median_lines.append( plt.plot([], [], linewidth=2, color="g")[0] )
+    dyn_median_plot, = plt.plot([], [], linewidth=2, color="g")
     plt.plot([0,895], [3.63, 3.63], "k--")      #Saturation level
-    plt.text(0.01, 3.65, "Saturation level", size=10)
+    plt.text(200, 3.65, "Saturation level", size=10)
     plt.ylabel("Intensity (Volts)", fontsize=18)
     plt.xlabel("Channel", fontsize=18)
     plt.xlim(0, 895)
@@ -361,12 +394,12 @@ if __name__ == "__main__":
 
     # Boxes that show information about the mean and std across the different channels
     #LED brightness and integration time
-    parameterbox = plt.text(0.006, 1.025, "no data", size=16, transform=plt.gca().transAxes,
+    parameterbox = plt.text(0.006, 1.025, "no data", size=14, transform=plt.gca().transAxes,
                             bbox=dict(boxstyle="round", ec='k', fc='w', lw="1"), clip_on=False)
 
     #Draw boxes that contain the mean and std/mean
     box_x_blue = 0.81
-    box_x_red = 0.55
+    box_x_red = 0.6
     box_y = 1.02
     box_width = 0.18
     box_heigth = 0.092
@@ -374,33 +407,33 @@ if __name__ == "__main__":
     plt.gca().add_patch( FancyBboxPatch((box_x_blue, box_y), box_width, box_heigth,
                                          transform=plt.gca().transAxes, clip_on=False,
                                          fc="none", ec="b", lw=2, boxstyle="round,pad=0.01") )
-    blue_mean = plt.text(box_x_blue, box_y+0.071, "no data", size=16, transform=plt.gca().transAxes,
+    blue_mean = plt.text(box_x_blue, box_y+0.071, "no data", size=12, transform=plt.gca().transAxes,
                          clip_on=False)
-    blue_std = plt.text(box_x_blue, box_y+0.04, "", size=16, transform=plt.gca().transAxes,
+    blue_std = plt.text(box_x_blue, box_y+0.04, "", size=12, transform=plt.gca().transAxes,
                         clip_on=False)
-    blue_uniformity = plt.text(box_x_blue, box_y+0.005, "", size=16, transform=plt.gca().transAxes,
+    blue_uniformity = plt.text(box_x_blue, box_y+0.005, "", size=12, transform=plt.gca().transAxes,
                                clip_on=False)
 
     #Verbose elements
     if verbose:
-        smearing_text = plt.text(0.34, 1.03, "Press keyboard button\nto smear data!",
-                                transform=plt.gca().transAxes, clip_on=False, size=14)
+        smearing_text = plt.text(0.38, 1.03, "Press keyboard button\nto smear data!",
+                                transform=plt.gca().transAxes, clip_on=False, size=12)
         #Red box
         plt.gca().add_patch( FancyBboxPatch((box_x_red, box_y), box_width, box_heigth,
                                              transform=plt.gca().transAxes, clip_on=False,
                                              fc="none", ec="r", lw=2, boxstyle="round,pad=0.01") )
-        red_mean = plt.text(box_x_red, box_y+0.071, "", size=16, transform=plt.gca().transAxes,
+        red_mean = plt.text(box_x_red, box_y+0.071, "", size=12, transform=plt.gca().transAxes,
                              clip_on=False)
-        red_std = plt.text(box_x_red, box_y+0.04, "", size=16,
+        red_std = plt.text(box_x_red, box_y+0.04, "", size=12,
                            transform=plt.gca().transAxes, clip_on=False)
-        red_uniformity = plt.text(box_x_red, box_y+0.005, "Click to freeze\ncurrent data!", size=16,
+        red_uniformity = plt.text(box_x_red, box_y+0.005, "Click to freeze\ncurrent data!", size=12,
                                    transform=plt.gca().transAxes, clip_on=False)
         #Indicate the inactive area
         plt.axvspan(0, n_remove_channels-0.5, color="r", alpha=0.6, label="Hidden area    ")
         plt.axvspan(895-n_remove_channels+0.5, 895, color="r", alpha=0.6)
 
     else:
-        plt.title("Lightyield Measurement with Arduino\nand TAOS TSL2014")
+        plt.title("Lightyield Measurement\nArduino/TAOS TSL2014")
         smearing_text = None
         red_mean = None
         red_std = None
@@ -418,12 +451,12 @@ if __name__ == "__main__":
 
 
     #Markers to indicate the mean
-    marker_pos_x = 902 if verbose else 902-n_remove_channels
+    marker_pos_x = 904 if verbose else 904-n_remove_channels
     plt.plot(marker_pos_x, mean_green, "g_", ms=15, mew=2.5, clip_on=False)  #Limit for the mean (green area)
     plt.plot(marker_pos_x, mean_orange, "orange", marker="_", ms=15, mew=2.5, clip_on=False)  #Limit for the mean (green area)
     marker_blue, = plt.plot(-1000, 0.0, "b<", ms=10, clip_on=False)
     marker_red, = plt.plot(-1000, 0.0, "r<", ms=10, clip_on=False)
-    plt.text(1.02, 0.5, "Mean values", size=20, transform=plt.gca().transAxes, rotation=270)
+    plt.text(1.02, 0.6, "Mean values", size=20, transform=plt.gca().transAxes, rotation=270)
 
 
     #Button clicks
@@ -433,6 +466,6 @@ if __name__ == "__main__":
 
     anim = animation.FuncAnimation(fig, update_line, fargs=[line, permline, blue_mean, blue_std,
                                    blue_uniformity, red_mean, red_std, red_uniformity, parameterbox,
-                                   marker_blue, marker_red, smearing_text, median_lines],
+                                   marker_blue, marker_red, smearing_text, dyn_median_plot],
                                    interval=200, blit=False, repeat=True, frames=None)
     plt.show()
